@@ -22,8 +22,6 @@ struct MyApp {
     function: String,
     expr: meval::Expr,
     coeff_vec: Vec<f64>,
-    a1: f64,
-    a2: f64,
 }
 
 impl Default for MyApp {
@@ -32,8 +30,6 @@ impl Default for MyApp {
             function: "x^2".to_owned(),
             expr: "x^2".parse::<meval::Expr>().unwrap(),
             coeff_vec: vec![], 
-            a1: 0.0,
-            a2: 0.0,
         }
     }
 }
@@ -48,6 +44,7 @@ impl eframe::App for MyApp {
                 let name_label = ui.label("Function to approximate: ");
                 let single_line = ui.text_edit_singleline(&mut self.function)
                                     .labelled_by(name_label.id);
+
                 if single_line.lost_focus() {
                     match self.function.parse::<meval::Expr>() {
                         Ok(expr) => self.expr = expr,
@@ -63,40 +60,27 @@ impl eframe::App for MyApp {
                 self.coeff_vec.push(0.);
             }
             for (i, coeff) in self.coeff_vec.iter_mut().enumerate() {
-                ui.add(egui::Slider::new(coeff, -10.0..=10.0)
-                       .text(format!("a{}", i + 1))
-                       );
+                ui.add( egui::Slider::new(coeff, -10.0..=10.0)
+                        .text(format!("a{}", i + 1)) );
             }
             
-            ui.add(egui::Slider::new(&mut self.a1, -10.0..=10.0).text("a1"));
-            
-            // Make plot
-            let mut fourier_points: Vec<egui::plot::PlotPoints> = vec![];
-            for (n, coeff) in self.coeff_vec.iter_mut().enumerate() {
-                fourier_points.push(
-                    (-1000..1000).map(|i| { 
+            // Make partial Fourier sum points
+            let fourier_points: egui::plot::PlotPoints 
+                = (-1000..1000).map(|i| { 
                         let x = i as f64 * 0.01;
-                        [x, *coeff * (x * n as f64).sin()] }).collect()
-                    );
-            }
+                        [x, 
+                        self.coeff_vec.iter().enumerate().map(|(n, coeff)| {
+                            *coeff * (x * (n + 1) as f64).sin()
+                        }).sum()]
+                }).collect();
 
-            let sin: egui::plot::PlotPoints = (-1000..1000).map(|i| {
-                let x = i as f64 * 0.01;
-                [x, self.a1 * x.sin()]
-            }).collect();
-            let line = egui::plot::Line::new(sin);
-
-            let mut fourier_curves: Vec<egui::plot::Line> = vec![];
-            while let Some(fourier_point) = fourier_points.pop()
-            {
-                fourier_curves.push(egui::plot::Line::new(fourier_point));
-            }
+            let fourier_curve = egui::plot::Line::new(fourier_points);
 
             let my_func: egui::plot::PlotPoints = (-1000..1000).map(|i| {
                 let x = i as f64 * 0.01;
                 [x, func(x)]
             }).collect();
-            let line2 = egui::plot::Line::new(my_func);
+            let function_curve = egui::plot::Line::new(my_func);
 
             egui::plot::Plot::new("my_plot")
                 .view_aspect(2.0)
@@ -106,12 +90,8 @@ impl eframe::App for MyApp {
                             [-std::f64::consts::PI, -5.], 
                             [std::f64::consts::PI, 5.]));
 
-                    for fourier_curve in fourier_curves.iter()
-                    {
-                        plot_ui.line(*fourier_curve);
-                    }
-                    plot_ui.line(line);
-                    plot_ui.line(line2)
+                    plot_ui.line(fourier_curve);
+                    plot_ui.line(function_curve);
                 })
         });
     }
