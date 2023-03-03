@@ -1,7 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+use std::f64::consts::PI;
+
 use eframe::egui;
 extern crate meval;
+
+extern crate peroxide;
 
 fn main() -> Result<(), eframe::Error> {
     // Log to stdout (if you run with `RUST_LOG=debug`).
@@ -18,18 +22,40 @@ fn main() -> Result<(), eframe::Error> {
     )
 }
 
+
+fn fourier_sum(x: f64, a: &Vec<f64>, b: &Vec<f64>) -> f64 {
+
+    let cos_sum = a.iter().enumerate().map(|(n, a_n)| {
+        a_n * (x * n as f64).cos()
+    }).sum::<f64>();
+
+    let sin_sum = b.iter().enumerate().map(|(n, b_n)| {
+        b_n * (x * (n + 1) as f64).sin()
+    }).sum::<f64>();
+
+    return cos_sum + sin_sum;
+}
+
+
+
 struct MyApp {
     function: String,
     expr: meval::Expr,
-    coeff_vec: Vec<f64>,
+    sin_coeff_vec: Vec<f64>,
+    cos_coeff_vec: Vec<f64>,
+    l2_error: f64,
 }
+
+
 
 impl Default for MyApp {
     fn default() -> Self {
         Self {
             function: "x^2".to_owned(),
             expr: "x^2".parse::<meval::Expr>().unwrap(),
-            coeff_vec: vec![], 
+            sin_coeff_vec: vec![], 
+            cos_coeff_vec: vec![],
+            l2_error: 0.,
         }
     }
 }
@@ -41,7 +67,7 @@ impl eframe::App for MyApp {
             ui.heading("Fourier series widget");
 
             ui.horizontal(|ui| {
-                let name_label = ui.label("Function to approximate: ");
+                let name_label = ui.label("f(x): ");
                 let single_line = ui.text_edit_singleline(&mut self.function)
                                     .labelled_by(name_label.id);
 
@@ -51,36 +77,59 @@ impl eframe::App for MyApp {
                         Err(_) => println!("Have math error!"),
                     }
                 }
+
+                ui.label(format!("L2 error: {}", self.l2_error));
             });
+            
             let func = self.expr.clone().bind("x").unwrap();
 
-            let sin_button = ui.add(egui::Button::new("+"));
-            if sin_button.clicked()
-            {
-                self.coeff_vec.push(0.);
-            }
-            for (i, coeff) in self.coeff_vec.iter_mut().enumerate() {
-                ui.add( egui::Slider::new(coeff, -10.0..=10.0)
-                        .text(format!("a{}", i + 1)) );
-            }
+            self.l2_error 
+                = peroxide::prelude::integrate(|x| {
+                (func(x) - fourier_sum(x, 
+                                       &self.cos_coeff_vec, 
+                                       &self.sin_coeff_vec)).abs()
+            }, (0., PI));
+
+            let n_trig_functions = 2;
+            ui.columns(n_trig_functions, |columns| {
+
+                let cos_button = columns[0].add(egui::Button::new("+"));
+                if cos_button.clicked()
+                {
+                    self.cos_coeff_vec.push(0.);
+                }
+                for (i, coeff) in self.cos_coeff_vec.iter_mut().enumerate() {
+                    columns[0].add( egui::Slider::new(coeff, -10.0..=10.0)
+                            .text(format!("A{}", i)) );
+                }
+
+                let sin_button = columns[1].add(egui::Button::new("+"));
+                if sin_button.clicked()
+                {
+                    self.sin_coeff_vec.push(0.);
+                }
+                for (i, coeff) in self.sin_coeff_vec.iter_mut().enumerate() {
+                    columns[1].add( egui::Slider::new(coeff, -10.0..=10.0)
+                            .text(format!("B{}", i + 1)) );
+                }
+
+            });
             
-            // Make partial Fourier sum points
             let fourier_points: egui::plot::PlotPoints 
                 = (-1000..1000).map(|i| { 
                         let x = i as f64 * 0.01;
-                        [x, 
-                        self.coeff_vec.iter().enumerate().map(|(n, coeff)| {
-                            *coeff * (x * (n + 1) as f64).sin()
-                        }).sum()]
+                        [x, fourier_sum(x, 
+                                        &self.cos_coeff_vec, 
+                                        &self.sin_coeff_vec)]
                 }).collect();
-
             let fourier_curve = egui::plot::Line::new(fourier_points);
 
-            let my_func: egui::plot::PlotPoints = (-1000..1000).map(|i| {
-                let x = i as f64 * 0.01;
-                [x, func(x)]
-            }).collect();
-            let function_curve = egui::plot::Line::new(my_func);
+            let function_points: egui::plot::PlotPoints 
+                = (-1000..1000).map(|i| {
+                    let x = i as f64 * 0.01;
+                    [x, func(x)]
+                }).collect();
+            let function_curve = egui::plot::Line::new(function_points);
 
             egui::plot::Plot::new("my_plot")
                 .view_aspect(2.0)
