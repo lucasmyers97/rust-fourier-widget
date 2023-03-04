@@ -98,11 +98,16 @@ impl eframe::App for MyApp {
                     ui.style_mut().spacing.slider_width
                         = ui.available_width() - delta;
 
-                    let cos_button = ui.button("+");
-                    if cos_button.clicked()
-                    {
-                        self.cos_coeff_vec.push(0.);
-                    }
+                    ui.horizontal(|ui| {
+                        let plus_button = ui.button("+");
+                        let minus_button = ui.button("-");
+                        if plus_button.clicked() {
+                            self.cos_coeff_vec.push(0.);
+                        }
+                        if minus_button.clicked() {
+                            self.cos_coeff_vec.pop();
+                        }
+                    });
                     for (i, coeff) in self.cos_coeff_vec.iter_mut().enumerate() {
                         ui.add( egui::Slider::new(coeff, -10.0..=10.0)
                                 .text(format!("A{}", i)) );
@@ -114,11 +119,17 @@ impl eframe::App for MyApp {
                     ui.style_mut().spacing.slider_width
                         = ui.available_width() - delta;
 
-                    let sin_button = ui.button("+");
-                    if sin_button.clicked()
-                    {
-                        self.sin_coeff_vec.push(0.);
-                    }
+                    ui.horizontal(|ui| {
+                        let plus_button = ui.button("+");
+                        let minus_button = ui.button("-");
+                        if plus_button.clicked() {
+                            self.sin_coeff_vec.push(0.);
+                        }
+                        if minus_button.clicked() {
+                            self.sin_coeff_vec.pop();
+                        }
+                    });
+
                     for (i, coeff) in self.sin_coeff_vec.iter_mut().enumerate() {
                         ui.add( egui::Slider::new(coeff, -10.0..=10.0)
                                 .text(format!("B{}", i + 1)) );
