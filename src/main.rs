@@ -91,9 +91,12 @@ impl eframe::App for MyApp {
             }, (0., PI));
 
             let available_width = ui.available_width();
+            let delta = 100.;
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
                     ui.set_width(available_width / 2.);
+                    ui.style_mut().spacing.slider_width
+                        = ui.available_width() - delta;
 
                     let cos_button = ui.button("+");
                     if cos_button.clicked()
@@ -108,6 +111,8 @@ impl eframe::App for MyApp {
                 ui.separator();
                 ui.vertical(|ui| {
                     ui.set_width(available_width / 2.);
+                    ui.style_mut().spacing.slider_width
+                        = ui.available_width() - delta;
 
                     let sin_button = ui.button("+");
                     if sin_button.clicked()
