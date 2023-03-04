@@ -78,7 +78,7 @@ impl eframe::App for MyApp {
                     }
                 }
 
-                ui.label(format!("L2 error: {}", self.l2_error));
+                ui.label(format!("L2 error: {:.5}", self.l2_error));
             });
             
             let func = self.expr.clone().bind("x").unwrap();
