@@ -90,29 +90,35 @@ impl eframe::App for MyApp {
                                        &self.sin_coeff_vec)).abs()
             }, (0., PI));
 
-            let n_trig_functions = 2;
-            ui.columns(n_trig_functions, |columns| {
+            let available_width = ui.available_width();
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    ui.set_width(available_width / 2.);
 
-                let cos_button = columns[0].add(egui::Button::new("+"));
-                if cos_button.clicked()
-                {
-                    self.cos_coeff_vec.push(0.);
-                }
-                for (i, coeff) in self.cos_coeff_vec.iter_mut().enumerate() {
-                    columns[0].add( egui::Slider::new(coeff, -10.0..=10.0)
-                            .text(format!("A{}", i)) );
-                }
+                    let cos_button = ui.button("+");
+                    if cos_button.clicked()
+                    {
+                        self.cos_coeff_vec.push(0.);
+                    }
+                    for (i, coeff) in self.cos_coeff_vec.iter_mut().enumerate() {
+                        ui.add( egui::Slider::new(coeff, -10.0..=10.0)
+                                .text(format!("A{}", i)) );
+                    }
+                });
+                ui.separator();
+                ui.vertical(|ui| {
+                    ui.set_width(available_width / 2.);
 
-                let sin_button = columns[1].add(egui::Button::new("+"));
-                if sin_button.clicked()
-                {
-                    self.sin_coeff_vec.push(0.);
-                }
-                for (i, coeff) in self.sin_coeff_vec.iter_mut().enumerate() {
-                    columns[1].add( egui::Slider::new(coeff, -10.0..=10.0)
-                            .text(format!("B{}", i + 1)) );
-                }
-
+                    let sin_button = ui.button("+");
+                    if sin_button.clicked()
+                    {
+                        self.sin_coeff_vec.push(0.);
+                    }
+                    for (i, coeff) in self.sin_coeff_vec.iter_mut().enumerate() {
+                        ui.add( egui::Slider::new(coeff, -10.0..=10.0)
+                                .text(format!("B{}", i + 1)) );
+                    }
+                });
             });
             
             let fourier_points: egui::plot::PlotPoints 
