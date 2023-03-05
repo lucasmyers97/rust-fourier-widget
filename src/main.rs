@@ -22,32 +22,34 @@ fn main() -> Result<(), eframe::Error> {
     )
 }
 
-
 fn fourier_sum(x: f64, a: &Vec<f64>, b: &Vec<f64>) -> f64 {
+    let cos_sum = a
+        .iter()
+        .enumerate()
+        .map(|(n, a_n)| a_n * (x * n as f64).cos())
+        .sum::<f64>();
 
-    let cos_sum = a.iter().enumerate().map(|(n, a_n)| {
-        a_n * (x * n as f64).cos()
-    }).sum::<f64>();
-
-    let sin_sum = b.iter().enumerate().map(|(n, b_n)| {
-        b_n * (x * (n + 1) as f64).sin()
-    }).sum::<f64>();
+    let sin_sum = b
+        .iter()
+        .enumerate()
+        .map(|(n, b_n)| b_n * (x * (n + 1) as f64).sin())
+        .sum::<f64>();
 
     return cos_sum + sin_sum;
 }
 
-
-
-fn expression_box(ui: &mut egui::Ui, 
-                  function_text: &mut String, 
-                  function_expr: &mut meval::Expr,
-                  l2_error: f64) {
-
+fn expression_box(
+    ui: &mut egui::Ui,
+    function_text: &mut String,
+    function_expr: &mut meval::Expr,
+    l2_error: f64,
+) {
     ui.horizontal(|ui| {
         let name_label = ui.label("f(x): ");
-        let single_line = ui.text_edit_singleline(function_text)
-                            .labelled_by(name_label.id);
-    
+        let single_line = ui
+            .text_edit_singleline(function_text)
+            .labelled_by(name_label.id);
+
         if single_line.lost_focus() {
             match function_text.parse::<meval::Expr>() {
                 Ok(expr) => *function_expr = expr,
@@ -59,19 +61,17 @@ fn expression_box(ui: &mut egui::Ui,
     });
 }
 
-
-
-fn coeff_slider_column(ui: &mut egui::Ui,
-                       coeff_vec: &mut Vec<f64>,
-                       is_cos_coeffs: bool,
-                       available_width: f32,
-                       delta: f32) {
-
+fn coeff_slider_column(
+    ui: &mut egui::Ui,
+    coeff_vec: &mut Vec<f64>,
+    is_cos_coeffs: bool,
+    available_width: f32,
+    delta: f32,
+) {
     ui.vertical(|ui| {
         ui.set_width(available_width / 2.);
-        ui.style_mut().spacing.slider_width
-            = ui.available_width() - delta;
-    
+        ui.style_mut().spacing.slider_width = ui.available_width() - delta;
+
         ui.horizontal(|ui| {
             let plus_button = ui.button("+");
             let minus_button = ui.button("-");
@@ -83,32 +83,37 @@ fn coeff_slider_column(ui: &mut egui::Ui,
             }
         });
         for (i, coeff) in coeff_vec.iter_mut().enumerate() {
-            let slider_text = if is_cos_coeffs { format!("A{}", i) }
-                              else { format!("B{}", i + 1) };
+            let slider_text = if is_cos_coeffs {
+                format!("A{}", i)
+            } else {
+                format!("B{}", i + 1)
+            };
 
-            ui.add( egui::Slider::new(coeff, -10.0..=10.0).text(slider_text) );
+            ui.add(egui::Slider::new(coeff, -10.0..=10.0).text(slider_text));
         }
     });
 }
 
-
-
 fn make_plot_points(f: impl Fn(f64) -> f64) -> egui::plot::PlotPoints {
-
-    (-1000..1000).map(|i| { let x = i as f64 * 0.01;
-                            [x, f(x)] }).collect()
+    (-1000..1000)
+        .map(|i| {
+            let x = i as f64 * 0.01;
+            [x, f(x)]
+        })
+        .collect()
 }
-
-
 
 fn l2_norm(f: impl Fn(f64) -> f64) -> f64 {
-    peroxide::fuga::integrate(|x| {
-        let f_val = f(x);
-        f_val * f_val
-    }, (-PI, PI), peroxide::fuga::G30K61(1e-16)).sqrt()
+    peroxide::fuga::integrate(
+        |x| {
+            let f_val = f(x);
+            f_val * f_val
+        },
+        (-PI, PI),
+        peroxide::fuga::G30K61(1e-16),
+    )
+    .sqrt()
 }
-
-
 
 struct MyApp {
     function_text: String,
@@ -118,14 +123,12 @@ struct MyApp {
     l2_error: f64,
 }
 
-
-
 impl Default for MyApp {
     fn default() -> Self {
         Self {
             function_text: "x^2".to_owned(),
             expr: "x^2".parse::<meval::Expr>().unwrap(),
-            sin_coeff_vec: vec![], 
+            sin_coeff_vec: vec![],
             cos_coeff_vec: vec![],
             l2_error: 0.,
         }
@@ -135,49 +138,40 @@ impl Default for MyApp {
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-
             ui.heading("Fourier series widget");
 
-            expression_box(ui, 
-                           &mut self.function_text, 
-                           &mut self.expr,
-                           self.l2_error);
-            
+            expression_box(ui, &mut self.function_text, &mut self.expr, self.l2_error);
+
             let func = match self.expr.clone().bind("x") {
                 Ok(func) => func,
-                Err(_) => "0.".parse::<meval::Expr>()
-                              .unwrap()
-                              .bind("x")
-                              .unwrap(),
+                Err(_) => "0.".parse::<meval::Expr>().unwrap().bind("x").unwrap(),
             };
 
-            self.l2_error = l2_norm(|x| { 
-                func(x) - fourier_sum(x, 
-                                      &self.cos_coeff_vec, 
-                                      &self.sin_coeff_vec)
-            });
+            self.l2_error =
+                l2_norm(|x| func(x) - fourier_sum(x, &self.cos_coeff_vec, &self.sin_coeff_vec));
 
             let available_width = ui.available_width();
             let delta = 100.;
             ui.horizontal(|ui| {
-                coeff_slider_column(ui, 
-                                    &mut self.cos_coeff_vec, 
-                                    /* is_cos_coeffs = */ true, 
-                                    available_width, 
-                                    delta);
+                coeff_slider_column(
+                    ui,
+                    &mut self.cos_coeff_vec,
+                    /* is_cos_coeffs = */ true,
+                    available_width,
+                    delta,
+                );
                 ui.separator();
-                coeff_slider_column(ui, 
-                                    &mut self.sin_coeff_vec, 
-                                    /* is_cos_coeffs = */ false, 
-                                    available_width, 
-                                    delta);
+                coeff_slider_column(
+                    ui,
+                    &mut self.sin_coeff_vec,
+                    /* is_cos_coeffs = */ false,
+                    available_width,
+                    delta,
+                );
             });
-            
-            let fourier_points = make_plot_points(
-                                    |x|fourier_sum(x, 
-                                                   &self.cos_coeff_vec, 
-                                                   &self.sin_coeff_vec) 
-                                    );
+
+            let fourier_points =
+                make_plot_points(|x| fourier_sum(x, &self.cos_coeff_vec, &self.sin_coeff_vec));
             let fourier_curve = egui::plot::Line::new(fourier_points);
 
             let function_points = make_plot_points(func);
@@ -186,10 +180,10 @@ impl eframe::App for MyApp {
             egui::plot::Plot::new("my_plot")
                 .view_aspect(2.0)
                 .show(ui, |plot_ui| {
-                    plot_ui.set_plot_bounds(
-                        egui::plot::PlotBounds::from_min_max(
-                            [-std::f64::consts::PI, -5.], 
-                            [std::f64::consts::PI, 5.]));
+                    plot_ui.set_plot_bounds(egui::plot::PlotBounds::from_min_max(
+                        [-std::f64::consts::PI, -5.],
+                        [std::f64::consts::PI, 5.],
+                    ));
 
                     plot_ui.line(fourier_curve);
                     plot_ui.line(function_curve);
