@@ -78,17 +78,18 @@ impl eframe::App for MyApp {
                     }
                 }
 
-                ui.label(format!("L2 error: {:.5}", self.l2_error));
+                ui.label(format!("L2 error: {:.8}", self.l2_error));
             });
             
             let func = self.expr.clone().bind("x").unwrap();
 
             self.l2_error 
-                = peroxide::prelude::integrate(|x| {
-                (func(x) - fourier_sum(x, 
-                                       &self.cos_coeff_vec, 
-                                       &self.sin_coeff_vec)).abs()
-            }, (0., PI));
+                = peroxide::fuga::integrate(|x| {
+                    let f_diff = func(x) - fourier_sum(x, 
+                                                       &self.cos_coeff_vec, 
+                                                       &self.sin_coeff_vec);
+                    f_diff * f_diff
+            }, (-PI, PI), peroxide::fuga::G30K61(1e-16)).sqrt();
 
             let available_width = ui.available_width();
             let delta = 100.;
