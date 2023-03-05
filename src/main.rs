@@ -101,6 +101,15 @@ fn make_plot_points(f: impl Fn(f64) -> f64) -> egui::plot::PlotPoints {
 
 
 
+fn l2_norm(f: impl Fn(f64) -> f64) -> f64 {
+    peroxide::fuga::integrate(|x| {
+        let f_val = f(x);
+        f_val * f_val
+    }, (-PI, PI), peroxide::fuga::G30K61(1e-16)).sqrt()
+}
+
+
+
 struct MyApp {
     function_text: String,
     expr: meval::Expr,
@@ -142,13 +151,11 @@ impl eframe::App for MyApp {
                               .unwrap(),
             };
 
-            self.l2_error 
-                = peroxide::fuga::integrate(|x| {
-                    let f_diff = func(x) - fourier_sum(x, 
-                                                       &self.cos_coeff_vec, 
-                                                       &self.sin_coeff_vec);
-                    f_diff * f_diff
-            }, (-PI, PI), peroxide::fuga::G30K61(1e-16)).sqrt();
+            self.l2_error = l2_norm(|x| { 
+                func(x) - fourier_sum(x, 
+                                      &self.cos_coeff_vec, 
+                                      &self.sin_coeff_vec)
+            });
 
             let available_width = ui.available_width();
             let delta = 100.;
