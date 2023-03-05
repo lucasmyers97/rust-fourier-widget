@@ -134,7 +134,13 @@ impl eframe::App for MyApp {
                            &mut self.expr,
                            self.l2_error);
             
-            let func = self.expr.clone().bind("x").unwrap();
+            let func = match self.expr.clone().bind("x") {
+                Ok(func) => func,
+                Err(_) => "0.".parse::<meval::Expr>()
+                              .unwrap()
+                              .bind("x")
+                              .unwrap(),
+            };
 
             self.l2_error 
                 = peroxide::fuga::integrate(|x| {
