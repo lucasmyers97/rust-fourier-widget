@@ -152,6 +152,25 @@ impl eframe::App for MyApp {
 
             let available_width = ui.available_width();
             let delta = 100.;
+            let fourier_points =
+                make_plot_points(|x| fourier_sum(x, &self.cos_coeff_vec, &self.sin_coeff_vec));
+            let fourier_curve = egui::plot::Line::new(fourier_points);
+
+            let function_points = make_plot_points(func);
+            let function_curve = egui::plot::Line::new(function_points);
+
+            egui::plot::Plot::new("my_plot")
+                .view_aspect(2.0)
+                .show(ui, |plot_ui| {
+                    plot_ui.set_plot_bounds(egui::plot::PlotBounds::from_min_max(
+                        [-std::f64::consts::PI, -5.],
+                        [std::f64::consts::PI, 5.],
+                    ));
+
+                    plot_ui.line(fourier_curve);
+                    plot_ui.line(function_curve);
+                });
+
             ui.horizontal(|ui| {
                 coeff_slider_column(
                     ui,
@@ -170,24 +189,6 @@ impl eframe::App for MyApp {
                 );
             });
 
-            let fourier_points =
-                make_plot_points(|x| fourier_sum(x, &self.cos_coeff_vec, &self.sin_coeff_vec));
-            let fourier_curve = egui::plot::Line::new(fourier_points);
-
-            let function_points = make_plot_points(func);
-            let function_curve = egui::plot::Line::new(function_points);
-
-            egui::plot::Plot::new("my_plot")
-                .view_aspect(2.0)
-                .show(ui, |plot_ui| {
-                    plot_ui.set_plot_bounds(egui::plot::PlotBounds::from_min_max(
-                        [-std::f64::consts::PI, -5.],
-                        [std::f64::consts::PI, 5.],
-                    ));
-
-                    plot_ui.line(fourier_curve);
-                    plot_ui.line(function_curve);
-                })
         });
     }
 }
