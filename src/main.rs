@@ -197,7 +197,9 @@ impl eframe::App for MyApp {
                     plot_ui.line(function_curve);
                 });
 
-            fourier_coeff_pair(ui, &mut self.cos_coeff_vec, &mut self.sin_coeff_vec, available_width, delta);
+            egui::containers::ScrollArea::vertical().show(ui, |ui| {
+                fourier_coeff_pair(ui, &mut self.cos_coeff_vec, &mut self.sin_coeff_vec, available_width, delta);
+            });
 
         });
     }
