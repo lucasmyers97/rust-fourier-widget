@@ -94,6 +94,32 @@ fn coeff_slider_column(
     });
 }
 
+fn fourier_coeff_pair(
+    ui: &mut egui::Ui,
+    cos_coeff_vec: &mut Vec<f64>,
+    sin_coeff_vec: &mut Vec<f64>,
+    available_width: f32,
+    delta: f32,
+) {
+    ui.horizontal(|ui| {
+        coeff_slider_column(
+            ui,
+            cos_coeff_vec,
+            /* is_cos_coeffs = */ true,
+            available_width,
+            delta,
+        );
+        ui.separator();
+        coeff_slider_column(
+            ui,
+            sin_coeff_vec,
+            /* is_cos_coeffs = */ false,
+            available_width,
+            delta,
+        );
+    });
+}
+
 fn make_plot_points(f: impl Fn(f64) -> f64) -> egui::plot::PlotPoints {
     (-1000..1000)
         .map(|i| {
@@ -171,23 +197,7 @@ impl eframe::App for MyApp {
                     plot_ui.line(function_curve);
                 });
 
-            ui.horizontal(|ui| {
-                coeff_slider_column(
-                    ui,
-                    &mut self.cos_coeff_vec,
-                    /* is_cos_coeffs = */ true,
-                    available_width,
-                    delta,
-                );
-                ui.separator();
-                coeff_slider_column(
-                    ui,
-                    &mut self.sin_coeff_vec,
-                    /* is_cos_coeffs = */ false,
-                    available_width,
-                    delta,
-                );
-            });
+            fourier_coeff_pair(ui, &mut self.cos_coeff_vec, &mut self.sin_coeff_vec, available_width, delta);
 
         });
     }
