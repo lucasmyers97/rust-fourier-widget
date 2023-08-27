@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use std::f64::consts::PI;
+use itertools::izip;
 
 use eframe::egui;
 extern crate meval;
@@ -61,9 +62,29 @@ fn expression_box(
     });
 }
 
+struct SliderData {
+    slider_vals: Vec<f64>,
+    slider_minima_text: Vec<String>,
+    slider_maxima_text: Vec<String>,
+    slider_minima: Vec<f64>,
+    slider_maxima: Vec<f64>
+}
+
+impl Default for SliderData {
+    fn default() -> Self {
+        Self {
+            slider_vals: vec![],
+            slider_minima_text: vec![],
+            slider_maxima_text: vec![],
+            slider_minima: vec![],
+            slider_maxima: vec![]
+        }
+    }
+}
+
 fn coeff_slider_column(
     ui: &mut egui::Ui,
-    coeff_vec: &mut Vec<f64>,
+    slider_data: &mut SliderData,
     is_cos_coeffs: bool,
     available_width: f32,
     delta: f32,
@@ -76,35 +97,63 @@ fn coeff_slider_column(
             let plus_button = ui.button("+");
             let minus_button = ui.button("-");
             if plus_button.clicked() {
-                coeff_vec.push(0.);
+                slider_data.slider_vals.push(0.);
+                slider_data.slider_minima_text.push("-10.".to_string());
+                slider_data.slider_maxima_text.push("10.".to_string());
+                slider_data.slider_minima.push(-10.);
+                slider_data.slider_maxima.push(10.);
             }
             if minus_button.clicked() {
-                coeff_vec.pop();
+                slider_data.slider_vals.pop();
+                slider_data.slider_minima.pop();
+                slider_data.slider_maxima.pop();
             }
         });
-        for (i, coeff) in coeff_vec.iter_mut().enumerate() {
+        for (coeff, min_text, max_text, min, max) in izip!(slider_data.slider_vals.iter_mut(),
+                                                           slider_data.slider_minima_text.iter_mut(),
+                                                           slider_data.slider_maxima_text.iter_mut(),
+                                                           slider_data.slider_minima.iter_mut(),
+                                                           slider_data.slider_maxima.iter_mut()) {
+            let i = 0;
             let slider_text = if is_cos_coeffs {
                 format!("A{}", i)
             } else {
                 format!("B{}", i + 1)
             };
 
-            ui.add(egui::Slider::new(coeff, -10.0..=10.0).text(slider_text));
+            *min = match min_text.parse::<f64>() {
+                Ok(new_min) => new_min,
+                Err(_) => *min,
+            };
+            *max = match max_text.parse::<f64>() {
+                Ok(new_max) => new_max,
+                Err(_) => *max,
+            };
+
+
+            ui.horizontal(|ui| {
+                let height = ui.available_height();
+                ui.add_sized([2. * height, height], 
+                             egui::TextEdit::singleline(min_text));
+                ui.add(egui::Slider::new(coeff, *min..=*max).text(slider_text));
+                ui.add_sized([2. * height, height], 
+                             egui::TextEdit::singleline(max_text));
+            });
         }
     });
 }
 
 fn fourier_coeff_pair(
     ui: &mut egui::Ui,
-    cos_coeff_vec: &mut Vec<f64>,
-    sin_coeff_vec: &mut Vec<f64>,
+    cos_slider_data: &mut SliderData,
+    sin_slider_data: &mut SliderData,
     available_width: f32,
     delta: f32,
 ) {
     ui.horizontal(|ui| {
         coeff_slider_column(
             ui,
-            cos_coeff_vec,
+            cos_slider_data,
             /* is_cos_coeffs = */ true,
             available_width,
             delta,
@@ -112,7 +161,7 @@ fn fourier_coeff_pair(
         ui.separator();
         coeff_slider_column(
             ui,
-            sin_coeff_vec,
+            sin_slider_data,
             /* is_cos_coeffs = */ false,
             available_width,
             delta,
@@ -144,8 +193,8 @@ fn l2_norm(f: impl Fn(f64) -> f64) -> f64 {
 struct MyApp {
     function_text: String,
     expr: meval::Expr,
-    sin_coeff_vec: Vec<f64>,
-    cos_coeff_vec: Vec<f64>,
+    sin_slider_data: SliderData,
+    cos_slider_data: SliderData,
     l2_error: f64,
 }
 
@@ -154,8 +203,8 @@ impl Default for MyApp {
         Self {
             function_text: "x^2".to_owned(),
             expr: "x^2".parse::<meval::Expr>().unwrap(),
-            sin_coeff_vec: vec![],
-            cos_coeff_vec: vec![],
+            sin_slider_data: SliderData::default(),
+            cos_slider_data: SliderData::default(),
             l2_error: 0.,
         }
     }
@@ -166,7 +215,10 @@ impl eframe::App for MyApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Fourier series widget");
 
-            expression_box(ui, &mut self.function_text, &mut self.expr, self.l2_error);
+
+            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                expression_box(ui, &mut self.function_text, &mut self.expr, self.l2_error);
+            });
 
             let func = match self.expr.clone().bind("x") {
                 Ok(func) => func,
@@ -174,31 +226,51 @@ impl eframe::App for MyApp {
             };
 
             self.l2_error =
-                l2_norm(|x| func(x) - fourier_sum(x, &self.cos_coeff_vec, &self.sin_coeff_vec));
+                l2_norm(|x| func(x) - fourier_sum(x, 
+                                                  &self.cos_slider_data.slider_vals, 
+                                                  &self.sin_slider_data.slider_vals));
 
             let available_width = ui.available_width();
             let delta = 100.;
             let fourier_points =
-                make_plot_points(|x| fourier_sum(x, &self.cos_coeff_vec, &self.sin_coeff_vec));
+                make_plot_points(|x| fourier_sum(x, 
+                                                 &self.cos_slider_data.slider_vals, 
+                                                 &self.sin_slider_data.slider_vals));
             let fourier_curve = egui::plot::Line::new(fourier_points);
 
             let function_points = make_plot_points(func);
             let function_curve = egui::plot::Line::new(function_points);
 
-            egui::plot::Plot::new("my_plot")
-                .view_aspect(2.0)
-                .show(ui, |plot_ui| {
-                    plot_ui.set_plot_bounds(egui::plot::PlotBounds::from_min_max(
-                        [-std::f64::consts::PI, -5.],
-                        [std::f64::consts::PI, 5.],
-                    ));
+            let plot_height_percentage = 0.7;
+            let plot_aspect = 2.0;
+            let available_height = ui.available_height();
+            let plot_height = if available_width > available_height * plot_aspect * plot_height_percentage { 
+                plot_height_percentage * available_height
+            } else { 
+                available_width / plot_aspect
+            };
 
-                    plot_ui.line(fourier_curve);
-                    plot_ui.line(function_curve);
-                });
+            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                egui::plot::Plot::new("my_plot")
+                    .view_aspect(plot_aspect)
+                    .height(plot_height)
+                    .show(ui, |plot_ui| {
+                        plot_ui.set_plot_bounds(egui::plot::PlotBounds::from_min_max(
+                            [-std::f64::consts::PI, -5.],
+                            [std::f64::consts::PI, 5.],
+                        ));
+
+                        plot_ui.line(fourier_curve);
+                        plot_ui.line(function_curve);
+                    });
+            });
 
             egui::containers::ScrollArea::vertical().show(ui, |ui| {
-                fourier_coeff_pair(ui, &mut self.cos_coeff_vec, &mut self.sin_coeff_vec, available_width, delta);
+                fourier_coeff_pair(ui, 
+                                   &mut self.cos_slider_data, 
+                                   &mut self.sin_slider_data, 
+                                   available_width, 
+                                   delta);
             });
 
         });
