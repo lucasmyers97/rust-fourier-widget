@@ -86,9 +86,10 @@ fn coeff_slider_column(
     ui: &mut egui::Ui,
     slider_data: &mut SliderData,
     is_cos_coeffs: bool,
-    available_width: f32,
-    delta: f32,
+    available_width: f32
 ) {
+    let delta = 180.;
+
     ui.vertical(|ui| {
         ui.set_width(available_width / 2.);
         ui.style_mut().spacing.slider_width = ui.available_width() - delta;
@@ -146,25 +147,23 @@ fn coeff_slider_column(
 fn fourier_coeff_pair(
     ui: &mut egui::Ui,
     cos_slider_data: &mut SliderData,
-    sin_slider_data: &mut SliderData,
-    available_width: f32,
-    delta: f32,
+    sin_slider_data: &mut SliderData
 ) {
+    let available_width = ui.available_width();
+
     ui.horizontal(|ui| {
         coeff_slider_column(
             ui,
             cos_slider_data,
             /* is_cos_coeffs = */ true,
-            available_width,
-            delta,
+            available_width
         );
         ui.separator();
         coeff_slider_column(
             ui,
             sin_slider_data,
             /* is_cos_coeffs = */ false,
-            available_width,
-            delta,
+            available_width
         );
     });
 }
@@ -188,6 +187,41 @@ fn l2_norm(f: impl Fn(f64) -> f64) -> f64 {
         peroxide::fuga::G30K61(1e-16),
     )
     .sqrt()
+}
+
+fn fourier_plot(
+    ui: &mut egui::Ui, 
+    fourier_points: egui::plot::PlotPoints,
+    function_points: egui::plot::PlotPoints
+) {
+    let available_width = ui.available_width();
+    let delta = 100.;
+    
+    let plot_height_percentage = 0.7;
+    let plot_aspect = 2.0;
+    let available_height = ui.available_height();
+    let plot_height = if available_width > available_height * plot_aspect * plot_height_percentage { 
+        plot_height_percentage * available_height
+    } else { 
+        available_width / plot_aspect
+    };
+    
+    let fourier_curve = egui::plot::Line::new(fourier_points);
+    let function_curve = egui::plot::Line::new(function_points);
+    ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+        egui::plot::Plot::new("my_plot")
+            .view_aspect(plot_aspect)
+            .height(plot_height)
+            .show(ui, |plot_ui| {
+                plot_ui.set_plot_bounds(egui::plot::PlotBounds::from_min_max(
+                    [-std::f64::consts::PI, -5.],
+                    [std::f64::consts::PI, 5.],
+                ));
+    
+                plot_ui.line(fourier_curve);
+                plot_ui.line(function_curve);
+            });
+    });
 }
 
 struct MyApp {
@@ -215,7 +249,6 @@ impl eframe::App for MyApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Fourier series widget");
 
-
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                 expression_box(ui, &mut self.function_text, &mut self.expr, self.l2_error);
             });
@@ -230,47 +263,18 @@ impl eframe::App for MyApp {
                                                   &self.cos_slider_data.slider_vals, 
                                                   &self.sin_slider_data.slider_vals));
 
-            let available_width = ui.available_width();
-            let delta = 100.;
+            let function_points = make_plot_points(func);
             let fourier_points =
                 make_plot_points(|x| fourier_sum(x, 
                                                  &self.cos_slider_data.slider_vals, 
                                                  &self.sin_slider_data.slider_vals));
-            let fourier_curve = egui::plot::Line::new(fourier_points);
 
-            let function_points = make_plot_points(func);
-            let function_curve = egui::plot::Line::new(function_points);
-
-            let plot_height_percentage = 0.7;
-            let plot_aspect = 2.0;
-            let available_height = ui.available_height();
-            let plot_height = if available_width > available_height * plot_aspect * plot_height_percentage { 
-                plot_height_percentage * available_height
-            } else { 
-                available_width / plot_aspect
-            };
-
-            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-                egui::plot::Plot::new("my_plot")
-                    .view_aspect(plot_aspect)
-                    .height(plot_height)
-                    .show(ui, |plot_ui| {
-                        plot_ui.set_plot_bounds(egui::plot::PlotBounds::from_min_max(
-                            [-std::f64::consts::PI, -5.],
-                            [std::f64::consts::PI, 5.],
-                        ));
-
-                        plot_ui.line(fourier_curve);
-                        plot_ui.line(function_curve);
-                    });
-            });
+            fourier_plot(ui, fourier_points, function_points);
 
             egui::containers::ScrollArea::vertical().show(ui, |ui| {
                 fourier_coeff_pair(ui, 
                                    &mut self.cos_slider_data, 
-                                   &mut self.sin_slider_data, 
-                                   available_width, 
-                                   delta);
+                                   &mut self.sin_slider_data);
             });
 
         });
