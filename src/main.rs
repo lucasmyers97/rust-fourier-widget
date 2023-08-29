@@ -110,12 +110,11 @@ fn coeff_slider_column(
                 slider_data.slider_maxima.pop();
             }
         });
-        for (coeff, min_text, max_text, min, max) in izip!(slider_data.slider_vals.iter_mut(),
-                                                           slider_data.slider_minima_text.iter_mut(),
-                                                           slider_data.slider_maxima_text.iter_mut(),
-                                                           slider_data.slider_minima.iter_mut(),
-                                                           slider_data.slider_maxima.iter_mut()) {
-            let i = 0;
+        for (i, (coeff, min_text, max_text, min, max)) in izip!(slider_data.slider_vals.iter_mut(),
+                                                                slider_data.slider_minima_text.iter_mut(),
+                                                                slider_data.slider_maxima_text.iter_mut(),
+                                                                slider_data.slider_minima.iter_mut(),
+                                                                slider_data.slider_maxima.iter_mut()).enumerate() {
             let slider_text = if is_cos_coeffs {
                 format!("A{}", i)
             } else {
@@ -134,9 +133,11 @@ fn coeff_slider_column(
 
             ui.horizontal(|ui| {
                 let height = ui.available_height();
+                ui.label(slider_text);
+                ui.add(egui::DragValue::new(coeff).speed((*max - *min) * 0.01));
                 ui.add_sized([2. * height, height], 
                              egui::TextEdit::singleline(min_text));
-                ui.add(egui::Slider::new(coeff, *min..=*max).text(slider_text));
+                ui.add(egui::Slider::new(coeff, *min..=*max).show_value(false));
                 ui.add_sized([2. * height, height], 
                              egui::TextEdit::singleline(max_text));
             });
@@ -195,8 +196,6 @@ fn fourier_plot(
     function_points: egui::plot::PlotPoints
 ) {
     let available_width = ui.available_width();
-    let delta = 100.;
-    
     let plot_height_percentage = 0.7;
     let plot_aspect = 2.0;
     let available_height = ui.available_height();
@@ -247,9 +246,11 @@ impl Default for MyApp {
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Fourier series widget");
-
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                ui.heading("Fourier series widget");
+            });
+
+            ui.vertical_centered(|ui| {
                 expression_box(ui, &mut self.function_text, &mut self.expr, self.l2_error);
             });
 
