@@ -91,12 +91,12 @@ fn coeff_slider_column(
     ui: &mut egui::Ui,
     slider_data: &mut SliderData,
     is_cos_coeffs: bool,
-    available_width: f32
+    column_width: f32
 ) {
     let delta = 180.;
 
     ui.vertical(|ui| {
-        ui.set_width(available_width / 2.);
+        ui.set_width(column_width);
         ui.style_mut().spacing.slider_width = ui.available_width() - delta;
 
         ui.horizontal(|ui| {
@@ -162,14 +162,14 @@ fn fourier_coeff_pair(
             ui,
             cos_slider_data,
             /* is_cos_coeffs = */ true,
-            available_width
+            available_width / 2.0
         );
         ui.separator();
         coeff_slider_column(
             ui,
             sin_slider_data,
             /* is_cos_coeffs = */ false,
-            available_width
+            available_width / 2.0
         );
     });
 }
