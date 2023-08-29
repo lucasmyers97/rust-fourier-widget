@@ -45,7 +45,12 @@ fn expression_box(
     function_expr: &mut meval::Expr,
     l2_error: f64,
 ) {
+    let available_width = ui.available_width();
+    let widget_size = 475.;
+
     ui.horizontal(|ui| {
+        ui.add_space((available_width - widget_size) / 2.);
+
         let name_label = ui.label("f(x): ");
         let single_line = ui
             .text_edit_singleline(function_text)
@@ -250,9 +255,7 @@ impl eframe::App for MyApp {
                 ui.heading("Fourier series widget");
             });
 
-            ui.vertical_centered(|ui| {
-                expression_box(ui, &mut self.function_text, &mut self.expr, self.l2_error);
-            });
+            expression_box(ui, &mut self.function_text, &mut self.expr, self.l2_error);
 
             let func = match self.expr.clone().bind("x") {
                 Ok(func) => func,
