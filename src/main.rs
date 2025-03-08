@@ -4,6 +4,7 @@ use std::f64::consts::PI;
 use itertools::izip;
 
 use eframe::egui;
+use egui_plot;
 extern crate meval;
 
 extern crate peroxide;
@@ -13,13 +14,13 @@ fn main() -> Result<(), eframe::Error> {
     tracing_subscriber::fmt::init();
 
     let options = eframe::NativeOptions {
-        initial_window_size: Some(egui::vec2(500.0, 400.0)),
+        viewport: egui::ViewportBuilder::default().with_inner_size([600.0, 500.0]),
         ..Default::default()
     };
     eframe::run_native(
         "My egui App",
         options,
-        Box::new(|_cc| Box::new(MyApp::default())),
+        Box::new(|_cc| Ok(Box::new(MyApp::default()))),
     )
 }
 
@@ -174,13 +175,16 @@ fn fourier_coeff_pair(
     });
 }
 
-fn make_plot_points(f: impl Fn(f64) -> f64) -> egui::plot::PlotPoints {
-    (-1000..1000)
-        .map(|i| {
-            let x = i as f64 * 0.01;
-            [x, f(x)]
-        })
-        .collect()
+// fn make_plot_points(f: &'a impl Fn(f64) -> f64) -> egui_plot::PlotPoints {
+//     (-1000..1000)
+//         .map(|i| {
+//             let x = i as f64 * 0.01;
+//             [x, f(x)]
+//         })
+//         .collect()
+// }
+fn make_plot_points<'a>(f: impl Fn(f64) -> f64 + 'a) -> egui_plot::PlotPoints<'a> {
+    egui_plot::PlotPoints::from_explicit_callback(f, -10.0..10.0, 2000)
 }
 
 fn l2_norm(f: impl Fn(f64) -> f64) -> f64 {
@@ -190,15 +194,15 @@ fn l2_norm(f: impl Fn(f64) -> f64) -> f64 {
             f_val * f_val
         },
         (-PI, PI),
-        peroxide::fuga::G30K61(1e-16),
+        peroxide::fuga::G30K61(1e-16, 20),
     )
     .sqrt()
 }
 
 fn fourier_plot(
     ui: &mut egui::Ui, 
-    fourier_points: egui::plot::PlotPoints,
-    function_points: egui::plot::PlotPoints
+    fourier_points: egui_plot::PlotPoints,
+    function_points: egui_plot::PlotPoints
 ) {
     let available_width = ui.available_width();
     let plot_height_percentage = 0.7;
@@ -210,14 +214,14 @@ fn fourier_plot(
         available_width / plot_aspect
     };
     
-    let fourier_curve = egui::plot::Line::new(fourier_points);
-    let function_curve = egui::plot::Line::new(function_points);
+    let fourier_curve = egui_plot::Line::new(fourier_points);
+    let function_curve = egui_plot::Line::new(function_points);
     ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-        egui::plot::Plot::new("my_plot")
+        egui_plot::Plot::new("my_plot")
             .view_aspect(plot_aspect)
             .height(plot_height)
             .show(ui, |plot_ui| {
-                plot_ui.set_plot_bounds(egui::plot::PlotBounds::from_min_max(
+                plot_ui.set_plot_bounds(egui_plot::PlotBounds::from_min_max(
                     [-std::f64::consts::PI, -5.],
                     [std::f64::consts::PI, 5.],
                 ));
