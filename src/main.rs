@@ -18,9 +18,9 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native(
-        "Fourier Widget",
+        "eframe template",
         native_options,
-        Box::new(|_cc| Ok(Box::new(fourier_widget::MyApp::default()))),
+        Box::new(|cc| Ok(Box::new(fourier_widget::FourierSeriesApp::new(cc)))),
     )
 }
 
@@ -50,7 +50,7 @@ fn main() {
             .start(
                 canvas,
                 web_options,
-                Box::new(|_cc| Ok(Box::new(fourier_widget::MyApp::default()))),
+                Box::new(|cc| Ok(Box::new(fourier_widget::FourierSeriesApp::new(cc)))),
             )
             .await;
 
